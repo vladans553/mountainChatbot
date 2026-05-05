@@ -2,6 +2,13 @@ exports.handler = async (event) => {
   try {
     const API_KEY = process.env.HUGGINGFACE_API_KEY;
 
+    if (!API_KEY) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ reply: "NO API KEY" }),
+      };
+    }
+
     const { message } = JSON.parse(event.body || "{}");
 
     const response = await fetch(
@@ -13,31 +20,30 @@ exports.handler = async (event) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          inputs: `<s>[INST] Odgovaraj kao planinarski vodič na srpskom jeziku. Korisnik pita: ${message} [/INST]`
+          inputs: message
         }),
       }
     );
 
-    const data = await response.json();
+    const text = await response.text();
 
-    let reply = "Nema odgovora.";
-
-    if (data?.[0]?.generated_text) {
-      reply = data[0].generated_text.split("[/INST]").pop().trim();
-    } else if (data?.error) {
-      reply = "HF error: " + data.error;
-    }
+    // 🔴 KLJUČNO: vidi RAW odgovor
+    console.log("HF RAW:", text);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ reply }),
+      body: JSON.stringify({
+        raw: text
+      }),
     };
 
   } catch (err) {
+    console.log("ERROR:", err);
+
     return {
       statusCode: 500,
       body: JSON.stringify({
-        reply: "Server error: " + err.message,
+        reply: err.message
       }),
     };
   }
