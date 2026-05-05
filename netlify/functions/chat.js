@@ -2,19 +2,10 @@ exports.handler = async (event) => {
   try {
     const API_KEY = process.env.HUGGINGFACE_API_KEY;
 
-    if (!API_KEY) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          reply: "Missing API key on server (HUGGINGFACE_API_KEY).",
-        }),
-      };
-    }
-
     const { message } = JSON.parse(event.body || "{}");
 
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta",
+      "https://api-inference.huggingface.co/models/google/flan-t5-base",
       {
         method: "POST",
         headers: {
@@ -22,27 +13,39 @@ exports.handler = async (event) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          inputs: `Ti si planinarski vodič. Odgovaraj kratko i jasno na srpskom jeziku.\n\nKorisnik: ${message}`,
-          parameters: {
-            max_new_tokens: 300,
-            temperature: 0.7,
-          },
+          inputs: `Odgovori kao planinarski vodič na srpskom jeziku: ${message}`,
         }),
       }
     );
 
-    const data = await response.json();
+    const text = await response.text();
 
-    // fallback za različite Hugging Face formate
-    let reply = "Nema odgovora.";
-
-    if (data?.[0]?.generated_text) {
-      reply = data[0].generated_text;
-    } else if (data?.generated_text) {
-      reply = data.generated_text;
-    } else if (data?.error) {
-      reply = "HF error: " + data.error;
+    // 🔴 PROVERA: ako je HTML
+    if (text.trim().startsWith("<")) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          reply: "Model trenutno nije dostupan (HF vraća HTML error). Pokušaj ponovo za minut.",
+        }),
+      };
     }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          reply: "Nevalidan JSON iz API-ja.",
+        }),
+      };
+    }
+
+    const reply =
+      data?.[0]?.generated_text ||
+      data?.generated_text ||
+      "Nema odgovora.";
 
     return {
       statusCode: 200,
@@ -50,8 +53,6 @@ exports.handler = async (event) => {
     };
 
   } catch (err) {
-    console.error("Function error:", err);
-
     return {
       statusCode: 500,
       body: JSON.stringify({
