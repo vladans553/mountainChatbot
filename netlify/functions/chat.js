@@ -1,17 +1,19 @@
 exports.handler = async (event) => {
   try {
+    console.log("FUNCTION START");
+
     const API_KEY = process.env.HUGGINGFACE_API_KEY;
 
     if (!API_KEY) {
       return {
         statusCode: 500,
-        body: JSON.stringify({
-          reply: "API ključ nije podešen na serveru."
-        }),
+        body: JSON.stringify({ error: "Missing API key" }),
       };
     }
 
-    const { message } = JSON.parse(event.body);
+    const { message } = JSON.parse(event.body || "{}");
+
+    console.log("USER MESSAGE:", message);
 
     const response = await fetch(
       "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
@@ -21,66 +23,28 @@ exports.handler = async (event) => {
           Authorization: `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          inputs: `<s>[INST] Ti si stručni planinarski vodič. Odgovaraj isključivo na srpskom jeziku. Budi kratak i konkretan. Korisnik pita: ${message} [/INST]`,
-          parameters: {
-            max_new_tokens: 300,
-            temperature: 0.7,
-          },
-        }),
+        body: JSON.stringify({ inputs: message }),
       }
     );
 
-    const data = await response.json();
+    const text = await response.text();
 
-    // HF loading (cold start)
-    if (data?.error?.includes("loading")) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          reply: `Model se pokreće... pokušaj za ${Math.round(
-            data.estimated_time || 20
-          )} sekundi.`,
-        }),
-      };
-    }
-
-    // HF error
-    if (data?.error) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          reply: "AI trenutno nije dostupan. Pokušaj ponovo za malo."
-        }),
-      };
-    }
-
-    if (data?.[0]?.generated_text) {
-      const text = data[0].generated_text
-        .split("[/INST]")
-        .pop()
-        .trim();
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ reply: text }),
-      };
-    }
+    console.log("HF RAW RESPONSE:", text);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        reply: "Neočekivan odgovor modela."
+        debug: text,
       }),
     };
 
   } catch (err) {
-    console.error("SERVER ERROR:", err);
+    console.error("FUNCTION ERROR:", err);
 
     return {
       statusCode: 500,
       body: JSON.stringify({
-        reply: "Server greška."
+        error: err.message,
       }),
     };
   }
