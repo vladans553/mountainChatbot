@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiking AI Agent</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">🏔️ Hiking AI</div>
+        <div class="nav-links">
+            <!-- Izmenjeno: href sada vodi na konkretne fajlove -->
+            <a href="about.html" id="about-link">About</a>
+            <a href="privacy.html" id="privacy-link">Privacy Policy</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="chat-card">
+            <div id="chat-window" class="chat-window">
+                <div class="message ai-message">
+                    Zdravo! Ja sam tvoj planinarski vodič. Kako ti mogu pomoći danas?
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="clear-btn" class="btn-secondary">Clear</button>
+                <button id="new-chat-btn" class="btn-secondary">New Chat</button>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Pitaj o stazama, opremi..." autocomplete="off">
+                <button id="send-btn" class="btn-primary">Pošalji</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
