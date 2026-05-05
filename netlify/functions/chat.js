@@ -1,19 +1,8 @@
 exports.handler = async (event) => {
   try {
-    console.log("FUNCTION START");
-
     const API_KEY = process.env.HUGGINGFACE_API_KEY;
 
-    if (!API_KEY) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "Missing API key" }),
-      };
-    }
-
     const { message } = JSON.parse(event.body || "{}");
-
-    console.log("USER MESSAGE:", message);
 
     const response = await fetch(
       "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
@@ -23,28 +12,32 @@ exports.handler = async (event) => {
           Authorization: `Bearer ${API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ inputs: message }),
+        body: JSON.stringify({
+          inputs: `<s>[INST] Odgovaraj kao planinarski vodič na srpskom jeziku. Korisnik pita: ${message} [/INST]`
+        }),
       }
     );
 
-    const text = await response.text();
+    const data = await response.json();
 
-    console.log("HF RAW RESPONSE:", text);
+    let reply = "Nema odgovora.";
+
+    if (data?.[0]?.generated_text) {
+      reply = data[0].generated_text.split("[/INST]").pop().trim();
+    } else if (data?.error) {
+      reply = "HF error: " + data.error;
+    }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        debug: text,
-      }),
+      body: JSON.stringify({ reply }),
     };
 
   } catch (err) {
-    console.error("FUNCTION ERROR:", err);
-
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: err.message,
+        reply: "Server error: " + err.message,
       }),
     };
   }
