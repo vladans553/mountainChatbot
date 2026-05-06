@@ -1,85 +1,83 @@
-/**
- * Hiking AI Agent - script.js
- * Verzija sa Netlify Functions (bez CORS problema)
- */
+// ELEMENTI
+const chatWindow = document.getElementById("chat-window");
+const input = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
+const clearBtn = document.getElementById("clear-btn");
+const newChatBtn = document.getElementById("new-chat-btn");
 
-const chatWindow = document.getElementById('chat-window');
-const userInput = document.getElementById('user-input');
-const sendBtn = document.getElementById('send-btn');
-const clearBtn = document.getElementById('clear-btn');
-const newChatBtn = document.getElementById('new-chat-btn');
+// NAV LINKS (About / Privacy) - samo za sigurnost
+document.getElementById("about-link")?.addEventListener("click", () => {
+  // normalno otvara stranicu (default behavior)
+});
 
-// Prikaz poruke u chatu
-function appendMessage(role, text) {
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message');
-    messageDiv.classList.add(role === 'user' ? 'user-message' : 'ai-message');
-    messageDiv.innerText = text;
-    chatWindow.appendChild(messageDiv);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+document.getElementById("privacy-link")?.addEventListener("click", () => {
+  // normalno otvara stranicu (default behavior)
+});
+
+// DODAJ PORUKU U CHAT
+function addMessage(text, type) {
+  const div = document.createElement("div");
+  div.className =
+    type === "user" ? "message user-message" : "message ai-message";
+  div.textContent = text;
+  chatWindow.appendChild(div);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// Poziv Netlify funkcije (backend → Hugging Face)
-async function getAIResponse(userText) {
-    try {
-        const response = await fetch("/.netlify/functions/chat", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ message: userText })
-        });
+// POŠALJI PORUKU NA BACKEND
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
 
-        if (!response.ok) {
-            return "Server trenutno ne radi kako treba. Pokušaj ponovo.";
-        }
+  addMessage(text, "user");
+  input.value = "";
 
-        const data = await response.json();
+  // loading indikator
+  const loadingId = "loading-msg";
+  const loading = document.createElement("div");
+  loading.className = "message ai-message";
+  loading.id = loadingId;
+  loading.textContent = "Pišem odgovor...";
+  chatWindow.appendChild(loading);
 
-        if (!data || !data.reply) {
-            return "AI vodič trenutno nema odgovor, pokušaj ponovo.";
-        }
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message: text }),
+    });
 
-        return data.reply;
+    const data = await res.json();
 
-    } catch (error) {
-        console.error("Greška:", error);
-        return "Nažalost, veza sa serverom je u prekidu.";
-    }
+    document.getElementById(loadingId)?.remove();
+
+    addMessage(data.reply || "Nema odgovora", "ai");
+  } catch (error) {
+    document.getElementById(loadingId)?.remove();
+    addMessage("Greška u komunikaciji sa serverom.", "ai");
+  }
 }
 
-// Klik na "Send"
-sendBtn.addEventListener('click', async () => {
-    const text = userInput.value.trim();
-
-    if (text !== "") {
-        appendMessage('user', text);
-        userInput.value = "";
-
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'message ai-message';
-        loadingDiv.innerText = "Razmišljam...";
-        chatWindow.appendChild(loadingDiv);
-
-        const aiResponse = await getAIResponse(text);
-
-        chatWindow.removeChild(loadingDiv);
-        appendMessage('ai', aiResponse);
-    }
+// CLEAR CHAT
+clearBtn.addEventListener("click", () => {
+  chatWindow.innerHTML = `
+    <div class="message ai-message">
+      Zdravo! Ja sam tvoj vodič. Kako ti mogu pomoći danas?!
+    </div>
+  `;
 });
 
-// Enter za slanje
-userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendBtn.click();
+// NEW CHAT (trenutno isto kao clear, ali može kasnije history)
+newChatBtn.addEventListener("click", () => {
+  chatWindow.innerHTML = "";
 });
 
-// Clear chat
-clearBtn.addEventListener('click', () => {
-    chatWindow.innerHTML = "";
-});
+// SEND BUTTON
+sendBtn.addEventListener("click", sendMessage);
 
-// Novi chat
-newChatBtn.addEventListener('click', () => {
-    chatWindow.innerHTML = "";
-    appendMessage('ai', "Započeli smo novi razgovor. Spreman sam za tvoja planinarska pitanja!");
+// ENTER KEY
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
 });
