@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const userMessage = req.body.message;
+    const { message } = req.body;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/interactions?key=${process.env.GEMINI_API_KEY}`,
@@ -15,16 +15,17 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           model: "gemini-3-flash-preview",
-          input: userMessage,
+          input: message,
         }),
       }
     );
 
     const data = await response.json();
 
-    // VAŽNO: tvoj response format
+    // ✅ FIX: tačan parsing tvog response-a
     const aiText =
-      data?.outputs?.find((o) => o.type === "text")?.text ||
+      data?.outputs?.[1]?.text ||   // 👈 GLAVNI FIX
+      data?.outputs?.find(o => o.text)?.text ||
       "Nema odgovora.";
 
     return res.status(200).json({
